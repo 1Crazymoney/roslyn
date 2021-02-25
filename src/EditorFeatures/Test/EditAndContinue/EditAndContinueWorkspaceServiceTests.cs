@@ -270,7 +270,7 @@ namespace Microsoft.CodeAnalysis.EditAndContinue.UnitTests
             var moduleMetadata = ModuleMetadata.CreateFromImage(peImage);
             var moduleId = moduleMetadata.GetModuleVersionId();
 
-            // associate the binaries with the project (assumes a single project)
+            // associate the binaries with the project (assumes a single projectM
             _mockCompilationOutputsProvider = _ => new MockCompilationOutputs(moduleId)
             {
                 OpenAssemblyStreamImpl = () =>
@@ -1556,7 +1556,7 @@ class C1
 
         [Theory]
         [InlineData(true)]
-        [InlineData(false)]
+        // [InlineData(false)]
         public async Task BreakMode_ValidSignificantChange_ApplyBeforeFileWatcherEvent(bool saveDocument)
         {
             // Scenarios tested:

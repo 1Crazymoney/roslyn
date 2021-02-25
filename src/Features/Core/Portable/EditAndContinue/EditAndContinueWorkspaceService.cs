@@ -84,7 +84,11 @@ namespace Microsoft.CodeAnalysis.EditAndContinue
             // The Project System doesn't always indicate whether we emit PDB, what kind of PDB we emit nor the path of the PDB.
             // To work around we look for the PDB on the path specified in the PDB debug directory.
             // https://github.com/dotnet/roslyn/issues/35065
-            return new CompilationOutputFilesWithImplicitPdbPath(project.CompilationOutputInfo.AssemblyPath);
+            var assemblyPath = !string.IsNullOrEmpty(project.CompilationOutputInfo.AssemblyPath) ?
+                project.CompilationOutputInfo.AssemblyPath :
+                project.OutputFilePath;
+
+            return new CompilationOutputFilesWithImplicitPdbPath(assemblyPath);
         }
 
         public void OnSourceFileUpdated(Document document)
@@ -95,6 +99,13 @@ namespace Microsoft.CodeAnalysis.EditAndContinue
                 // fire and forget
                 _ = Task.Run(() => debuggingSession.LastCommittedSolution.OnSourceFileUpdatedAsync(document, debuggingSession.CancellationToken));
             }
+        }
+
+        public Task OnSourceFileUpdatedAsync(Document document)
+        {
+            var debuggingSession = _debuggingSession;
+            Contract.ThrowIfNull(debuggingSession, $"{nameof(OnSourceFileUpdatedAsync)} should only be invoked during a debugging session.");
+            return debuggingSession.LastCommittedSolution.OnSourceFileUpdatedAsync(document, debuggingSession.CancellationToken);
         }
 
         public void StartDebuggingSession(Solution solution)

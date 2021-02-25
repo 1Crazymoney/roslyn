@@ -141,6 +141,12 @@ namespace Microsoft.CodeAnalysis.MSBuild
         }
 
         /// <summary>
+        /// In dotnet-watch, edits have already occured to the file on disk, but not to the workspace.
+        /// In such an event, avoid 
+        /// </summary>
+        internal bool SuppressSaveEditsToDisk { get; set; }
+
+        /// <summary>
         /// Associates a project file extension with a language name.
         /// </summary>
         public void AssociateFileExtensionWithLanguage(string projectFileExtension, string language)
@@ -279,6 +285,7 @@ namespace Microsoft.CodeAnalysis.MSBuild
                 case ApplyChangesKind.RemoveProjectReference:
                 case ApplyChangesKind.AddAnalyzerReference:
                 case ApplyChangesKind.RemoveAnalyzerReference:
+                case ApplyChangesKind.ChangeAdditionalDocument:
                     return true;
                 default:
                     return false;
@@ -365,14 +372,34 @@ namespace Microsoft.CodeAnalysis.MSBuild
             var document = this.CurrentSolution.GetDocument(documentId);
             if (document != null)
             {
-                var encoding = DetermineEncoding(text, document);
+                if (!SuppressSaveEditsToDisk)
+                {
+                    var encoding = DetermineEncoding(text, document);
 
-                this.SaveDocumentText(documentId, document.FilePath, text, encoding ?? new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+                    this.SaveDocumentText(documentId, document.FilePath, text, encoding ?? new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+                }
+
                 this.OnDocumentTextChanged(documentId, text, PreservationMode.PreserveValue);
             }
         }
 
-        private static Encoding DetermineEncoding(SourceText text, Document document)
+        protected override void ApplyAdditionalDocumentTextChanged(DocumentId documentId, SourceText text)
+        {
+            var document = this.CurrentSolution.GetAdditionalDocument(documentId);
+            if (document != null)
+            {
+                if (!SuppressSaveEditsToDisk)
+                {
+                    var encoding = DetermineEncoding(text, document);
+
+                    this.SaveDocumentText(documentId, document.FilePath, text, encoding ?? new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+                }
+
+                this.OnAdditionalDocumentTextChanged(documentId, text, PreservationMode.PreserveValue);
+            }
+        }
+
+        private static Encoding DetermineEncoding(SourceText text, TextDocument document)
         {
             if (text.Encoding != null)
             {
